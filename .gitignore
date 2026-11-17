@@ -1,3 +1,16 @@
 /.vs
 /obj
 /bin
+
+**/bin/
+**/obj/
+*.user
+.env
+.env.*
+appsettings.*.local.json
+*.pfx
+*.pem
+*.key
+App_Data/
+/publish/
+/.verification-*/

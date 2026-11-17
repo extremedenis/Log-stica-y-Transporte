@@ -1,164 +1,81 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Logistica_y_transporte.Models;
+using Logistica_y_transporte.Seguridad;
 
-namespace Logistica_y_transporte.Controllers
+namespace Logistica_y_transporte.Controllers;
+
+[Authorize]
+public class PersonasController(AppDbContext context) : Controller
 {
-    public class PersonasController : Controller
+    private string UsuarioId => User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? throw new InvalidOperationException("La sesión no contiene identificador de cuenta.");
+    private IQueryable<Persona> Alcance() => User.HasClaim(PermisosPersonas.Tipo,PermisosPersonas.Todos)
+        ? context.Personas : context.Personas.Where(p=>p.UserId==UsuarioId);
+
+    [Authorize(Policy=PermisosPersonas.Leer)]
+    public async Task<IActionResult> Index() => View(await Alcance().AsNoTracking().Include(p=>p.User).ToListAsync());
+
+    [Authorize(Policy=PermisosPersonas.Leer)]
+    public async Task<IActionResult> Details(Guid? id)
     {
-        private readonly AppDbContext _context;
+        if(id is null)return NotFound();
+        var persona=await Alcance().AsNoTracking().Include(p=>p.User).SingleOrDefaultAsync(p=>p.personaId==id);
+        return persona is null ? NotFound() : View(persona);
+    }
 
-        public PersonasController(AppDbContext context)
-        {
-            _context = context;
-        }
+    [Authorize(Policy=PermisosPersonas.Crear)]
+    public IActionResult Create() => View(new PersonaFormulario());
 
-        // GET: Personas
-        public async Task<IActionResult> Index()
-        {
-            var appDbContext = _context.Personas.Include(p => p.User);
-            return View(await appDbContext.ToListAsync());
-        }
+    [HttpPost,ValidateAntiForgeryToken,Authorize(Policy=PermisosPersonas.Crear)]
+    public async Task<IActionResult> Create(PersonaFormulario formulario)
+    {
+        if(!ModelState.IsValid)return View(formulario);
+        var persona=new Persona{personaId=Guid.NewGuid(),Nombre=formulario.Nombre,Apellido=formulario.Apellido,
+            Direccion=formulario.Direccion,UserId=UsuarioId};
+        context.Personas.Add(persona);
+        await context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
 
-        // GET: Personas/Details/5
-        public async Task<IActionResult> Details(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
+    [Authorize(Policy=PermisosPersonas.Editar)]
+    public async Task<IActionResult> Edit(Guid? id)
+    {
+        if(id is null)return NotFound();
+        var persona=await Alcance().AsNoTracking().SingleOrDefaultAsync(p=>p.personaId==id);
+        return persona is null ? NotFound() : View(new PersonaFormulario{PersonaId=persona.personaId,
+            Nombre=persona.Nombre??"",Apellido=persona.Apellido??"",Direccion=persona.Direccion});
+    }
 
-            var persona = await _context.Personas
-                .Include(p => p.User)
-                .FirstOrDefaultAsync(m => m.personaId == id);
-            if (persona == null)
-            {
-                return NotFound();
-            }
+    [HttpPost,ValidateAntiForgeryToken,Authorize(Policy=PermisosPersonas.Editar)]
+    public async Task<IActionResult> Edit(Guid id,PersonaFormulario formulario)
+    {
+        if(id!=formulario.PersonaId)return NotFound();
+        var persona=await Alcance().SingleOrDefaultAsync(p=>p.personaId==id);
+        if(persona is null)return NotFound();
+        if(!ModelState.IsValid)return View(formulario);
+        // Se carga el registro autorizado; nunca se adjunta una entidad suministrada por el navegador.
+        persona.Nombre=formulario.Nombre;persona.Apellido=formulario.Apellido;persona.Direccion=formulario.Direccion;
+        await context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
+    }
 
-            return View(persona);
-        }
+    [Authorize(Policy=PermisosPersonas.Eliminar)]
+    public async Task<IActionResult> Delete(Guid? id)
+    {
+        if(id is null)return NotFound();
+        var persona=await Alcance().AsNoTracking().Include(p=>p.User).SingleOrDefaultAsync(p=>p.personaId==id);
+        return persona is null ? NotFound() : View(persona);
+    }
 
-        // GET: Personas/Create
-        public IActionResult Create()
-        {
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id");
-            return View();
-        }
-
-        // POST: Personas/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("personaId,Nombre,Apellido,Direccion,UserId")] Persona persona)
-        {
-            if (ModelState.IsValid)
-            {
-                persona.personaId = Guid.NewGuid();
-                _context.Add(persona);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", persona.UserId);
-            return View(persona);
-        }
-
-        // GET: Personas/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var persona = await _context.Personas.FindAsync(id);
-            if (persona == null)
-            {
-                return NotFound();
-            }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", persona.UserId);
-            return View(persona);
-        }
-
-        // POST: Personas/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("personaId,Nombre,Apellido,Direccion,UserId")] Persona persona)
-        {
-            if (id != persona.personaId)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(persona);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!PersonaExists(persona.personaId))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["UserId"] = new SelectList(_context.Users, "Id", "Id", persona.UserId);
-            return View(persona);
-        }
-
-        // GET: Personas/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var persona = await _context.Personas
-                .Include(p => p.User)
-                .FirstOrDefaultAsync(m => m.personaId == id);
-            if (persona == null)
-            {
-                return NotFound();
-            }
-
-            return View(persona);
-        }
-
-        // POST: Personas/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid id)
-        {
-            var persona = await _context.Personas.FindAsync(id);
-            if (persona != null)
-            {
-                _context.Personas.Remove(persona);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool PersonaExists(Guid id)
-        {
-            return _context.Personas.Any(e => e.personaId == id);
-        }
+    [HttpPost,ActionName("Delete"),ValidateAntiForgeryToken,Authorize(Policy=PermisosPersonas.Eliminar)]
+    public async Task<IActionResult> DeleteConfirmed(Guid id)
+    {
+        var persona=await Alcance().SingleOrDefaultAsync(p=>p.personaId==id);
+        if(persona is null)return NotFound();
+        context.Personas.Remove(persona);await context.SaveChangesAsync();
+        return RedirectToAction(nameof(Index));
     }
 }

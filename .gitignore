@@ -14,3 +14,7 @@ appsettings.*.local.json
 App_Data/
 /publish/
 /.verification-*/
+
+.env.private
+/deploy/keys/
+*.log

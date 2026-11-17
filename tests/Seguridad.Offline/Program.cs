@@ -1,5 +1,7 @@
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using Logistica_y_transporte.Controllers;
 using Logistica_y_transporte.Models;
@@ -15,6 +17,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 internal sealed class AuditoriaRunner
 {
@@ -39,7 +42,7 @@ internal sealed class AuditoriaRunner
                 var users=scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
                 foreach(var id in new[]{"a","b","sin-permiso","lector","admin"})
                 {
-                    var u=new IdentityUser{Id=id,UserName=id+"@example.test",Email=id+"@example.test"};
+                    var u=new IdentityUser{Id=id,UserName=id+"@example.test",Email=id+"@example.test",TwoFactorEnabled=true,LockoutEnabled=true};
                     Check((await users.CreateAsync(u)).Succeeded,"crear usuario ficticio");
                     var permisos=id=="sin-permiso"?Array.Empty<string>():id=="lector"?[PermisosPersonas.Leer]:PermisosPersonas.Valores.Where(p=>id=="admin"||p!=PermisosPersonas.Todos).ToArray();
                     Check((await users.AddClaimsAsync(u,permisos.Select(p=>new Claim(PermisosPersonas.Tipo,p)))).Succeeded,"claims ficticios");
@@ -97,6 +100,72 @@ internal sealed class AuditoriaRunner
                 Check(await PermisosPersonas.Administrar(scope.ServiceProvider,["--usuario-id","sin-permiso","--confirmar-usuario","sin-permiso","--accion","conceder"],writer)==0,"concesión administrativa explícita");
                 Check(await PermisosPersonas.Administrar(scope.ServiceProvider,["--usuario-id","sin-permiso","--confirmar-usuario","sin-permiso","--accion","revocar"],writer)==0,"revocación administrativa explícita");
             }
+            using(var scope=services.CreateScope())
+            {
+                var users=scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+                var u=new IdentityUser{Id="abuso",UserName="abuso@example.test",Email="abuso@example.test",EmailConfirmed=true,LockoutEnabled=true};
+                Check((await users.CreateAsync(u,"TestOnly!234")).Succeeded,"cuenta ficticia con contraseña");
+                var signin=scope.ServiceProvider.GetRequiredService<SignInManager<IdentityUser>>();
+                for(var i=0;i<5;i++)await signin.CheckPasswordSignInAsync(u,"Wrong!234",true);
+                Check(await users.IsLockedOutAsync(u),"cinco fallos bloquean la cuenta");
+                Check((await signin.CheckPasswordSignInAsync(u,"TestOnly!234",true)).IsLockedOut,"contraseña correcta no elude bloqueo");
+                Check(await PermisosPersonas.Administrar(scope.ServiceProvider,["--usuario-id","abuso","--confirmar-usuario","abuso","--accion","conceder"],new StringWriter())==2,"sin 2FA no concede privilegios");
+                var ownerUser=(await users.FindByIdAsync("b"))!;
+                await users.SetTwoFactorEnabledAsync(ownerUser,false);
+            }
+            using(var noMfa=factory.Cliente())
+            {
+                await noMfa.GetAsync("/__audit/signin/b");
+                Check(Denegado(await noMfa.GetAsync("/Personas")),"desactivar 2FA revoca acceso a Personas aunque conserve claims");
+            }
+            string mfaCode;
+            using(var scope=services.CreateScope())
+            {
+                var users=scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+                var user=new IdentityUser{Id="mfa",UserName="mfa@example.test",Email="mfa@example.test",EmailConfirmed=true,LockoutEnabled=true};
+                Check((await users.CreateAsync(user,"FixtureOnly!234")).Succeeded,"alta ficticia para TOTP");
+                await users.ResetAuthenticatorKeyAsync(user);var key=(await users.GetAuthenticatorKeyAsync(user))!;
+                var alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";var bits=0;var buffer=0;var bytes=new List<byte>();
+                foreach(var ch in key.ToUpperInvariant()){buffer=(buffer<<5)|alphabet.IndexOf(ch);bits+=5;if(bits>=8){bits-=8;bytes.Add((byte)(buffer>>bits));}}
+                var counter=BitConverter.GetBytes(DateTimeOffset.UtcNow.ToUnixTimeSeconds()/30);if(BitConverter.IsLittleEndian)Array.Reverse(counter);
+                var hash=HMACSHA1.HashData(bytes.ToArray(),counter);var offset=hash[^1]&15;
+                mfaCode=((((hash[offset]&127)<<24)|(hash[offset+1]<<16)|(hash[offset+2]<<8)|hash[offset+3])%1000000).ToString("D6");
+                Check(await users.VerifyTwoFactorTokenAsync(user,users.Options.Tokens.AuthenticatorTokenProvider,mfaCode),"TOTP real aceptado");
+                Check(!await users.VerifyTwoFactorTokenAsync(user,users.Options.Tokens.AuthenticatorTokenProvider,"invalid"),"TOTP inválido rechazado");
+                await users.SetTwoFactorEnabledAsync(user,true);
+                var codes=(await users.GenerateNewTwoFactorRecoveryCodesAsync(user,3))!.ToArray();
+                Check((await users.RedeemTwoFactorRecoveryCodeAsync(user,codes[0])).Succeeded,"recuperación real por código");
+                Check(!(await users.RedeemTwoFactorRecoveryCodeAsync(user,codes[0])).Succeeded,"código de recuperación de un solo uso");
+                Check(await PermisosPersonas.Administrar(scope.ServiceProvider,["--usuario-id","mfa","--confirmar-usuario","mfa","--accion","conceder"],new StringWriter())==0,"privilegio tras enrolamiento MFA");
+            }
+            using(var mfa=factory.Cliente())
+            {
+                var challenge=await Post(mfa,"/Identity/Account/Login","/Identity/Account/Login",("Input.Email","mfa@example.test"),("Input.Password","FixtureOnly!234"));
+                Check(challenge.StatusCode==HttpStatusCode.Redirect&&challenge.Headers.Location!.ToString().Contains("LoginWith2fa"),"contraseña no basta para iniciar sesión MFA");
+                Check((await mfa.GetAsync("/Personas")).StatusCode==HttpStatusCode.Redirect,"antes del TOTP no hay sesión de aplicación");
+                var done=await Post(mfa,"/Identity/Account/LoginWith2fa","/Identity/Account/LoginWith2fa",("Input.TwoFactorCode",mfaCode));
+                Check(done.StatusCode==HttpStatusCode.Redirect,"TOTP completa login HTTP");
+                Check((await mfa.GetAsync("/Personas")).StatusCode==HttpStatusCode.OK,"sesión MFA accede con permiso explícito");
+            }
+            using(var limited=factory.Cliente())
+            {
+                var rejected=false;
+                for(var i=0;i<25;i++){limited.DefaultRequestHeaders.Remove("X-Forwarded-For");limited.DefaultRequestHeaders.Add("X-Forwarded-For","203.0.113."+(i+1));var response=await limited.GetAsync("/Identity/Account/Login");if((int)response.StatusCode==429){rejected=true;Check(response.Headers.RetryAfter is not null,"límite informa espera");break;}}
+                Check(rejected,"cabecera falsa no elude límite del cliente");
+                Check((await limited.GetAsync("/Home/Privacy")).StatusCode!=HttpStatusCode.TooManyRequests,"límite no agota navegación normal");
+            }
+            foreach(var prefix in new[]{"/deniscorp/logistica-transporte","/otra/logistica"})
+            {
+                await using var prefixed=new HostAuditoria(prefix);using var client=prefixed.Cliente();
+                using(var scope=prefixed.Services.CreateScope())await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreatedAsync();
+                var response=await client.GetAsync(prefix+"/Identity/Account/Login");
+                Check(response.StatusCode==HttpStatusCode.OK,"Identity bajo prefijo alternativo");
+                var html=await response.Content.ReadAsStringAsync();
+                Check(html.Contains(prefix+"/lib/")&&html.Contains(prefix+"/Identity/Account/"),"recursos y navegación bajo prefijo");
+                Check(response.Headers.GetValues("Set-Cookie").All(c=>c.Contains("path="+prefix,StringComparison.OrdinalIgnoreCase)&&!c.Contains("domain=",StringComparison.OrdinalIgnoreCase)),"cookie host-only con prefijo");
+                Check((await client.GetAsync("/Identity/Account/Login")).StatusCode==HttpStatusCode.NotFound,"raíz ajena al prefijo no existe");
+                var challenge=await client.GetAsync(prefix+"/Personas");Check(challenge.Headers.Location!.AbsolutePath==prefix+"/Identity/Account/Login","challenge Identity conserva prefijo");
+            }
             Console.WriteLine($"OK: {checks} comprobaciones HTTP de autorización, alcance, sobreescritura, CSRF y permisos. SQL Server no fue abierto.");
         }
         finally { Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection",anterior); }
@@ -106,11 +175,13 @@ internal sealed class AuditoriaRunner
 internal sealed class HostAuditoria : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection connection=new("Data Source=:memory:");
-    public HostAuditoria()=>connection.Open();
+    private readonly string prefix;
+    public HostAuditoria(string prefix=""){this.prefix=prefix;connection.Open();}
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseContentRoot(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../")));
         builder.UseEnvironment("Testing");
+        builder.ConfigureAppConfiguration((_,c)=>c.AddInMemoryCollection(new Dictionary<string,string?>{["Hosting:PathBase"]=prefix}));
         builder.ConfigureLogging(logging=>logging.ClearProviders());
         builder.ConfigureServices(services=>
         {
@@ -129,6 +200,7 @@ internal sealed class LoginFicticio : IStartupFilter
     {
         app.Use(async(context,siguiente)=>
         {
+            context.Connection.RemoteIpAddress=IPAddress.Parse("198.51.100.10");
             if(context.Request.Path.StartsWithSegments("/__audit/signin",out var rest))
             {
                 var users=context.RequestServices.GetRequiredService<UserManager<IdentityUser>>();

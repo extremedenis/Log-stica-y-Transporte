@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
@@ -109,9 +109,7 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
@@ -124,11 +122,14 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
                 if (result.IsLockedOut)
                 {
                     _logger.LogWarning("User account locked out.");
-                    return RedirectToPage("./Lockout");
+                    // Respuesta genérica: no revela si la cuenta existe o está bloqueada.
+                    ModelState.AddModelError(string.Empty,"Invalid login attempt. Try again later.");
+                    return Page();
                 }
                 else
                 {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                    _logger.LogWarning(new EventId(7102,"AccesoRechazado"),"Intento de acceso rechazado; datos de cuenta y contraseña omitidos.");
+                    ModelState.AddModelError(string.Empty, "Invalid login attempt. Try again later.");
                     return Page();
                 }
             }

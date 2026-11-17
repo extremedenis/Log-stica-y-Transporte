@@ -19,7 +19,7 @@ public static class PermisosPersonas
         options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
         foreach (var permiso in Valores)
             options.AddPolicy(permiso, p => p.RequireAuthenticatedUser()
-                .RequireClaim(ClaimTypes.NameIdentifier).RequireClaim(Tipo, permiso));
+                .RequireClaim(ClaimTypes.NameIdentifier).RequireClaim(Tipo, permiso).AddRequirements(new SegundoFactorPrivilegiado()));
     }
 
     // Herramienta de administración local. El registro público nunca concede permisos.
@@ -33,6 +33,8 @@ public static class PermisosPersonas
         var manager=services.GetRequiredService<UserManager<IdentityUser>>();
         var usuario=await manager.FindByIdAsync(id);
         if(usuario is null) { await output.WriteLineAsync("La cuenta indicada no existe. No se hicieron cambios."); return 2; }
+        if(accion=="conceder" && !await manager.GetTwoFactorEnabledAsync(usuario))
+        {await output.WriteLineAsync("La cuenta debe configurar 2FA y guardar sus códigos de recuperación antes de recibir permisos.");return 2;}
         var actuales=await manager.GetClaimsAsync(usuario);
         var claims=accion=="conceder"
             ? Valores.Where(v=>!actuales.Any(c=>c.Type==Tipo&&c.Value==v)).Select(v=>new Claim(Tipo,v)).ToArray()

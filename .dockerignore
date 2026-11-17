@@ -1,0 +1,14 @@
+**/bin
+**/obj
+tests
+.git
+.verification-*
+**/*.user
+**/*.log
+**/.env*
+appsettings.*.local.json
+**/keys
+**/App_Data
+.vs
+.local-security
+.local

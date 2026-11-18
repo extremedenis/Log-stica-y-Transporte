@@ -1,7 +1,7 @@
-# SQL Server must run on supported external x64 hardware; no SQL engine on DS223j.
+# PostgreSQL must be provisioned separately; DS223j capacity remains subject to measurement.
 services:
   logistica:
-    image: deniscorp/logistica:0.2.0
+    image: deniscorp/logistica:0.4.0
     build:
       context: ..
       dockerfile: deploy/Dockerfile

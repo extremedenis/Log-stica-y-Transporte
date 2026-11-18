@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 var builder=WebApplication.CreateBuilder(args);
+if(builder.Environment.IsDevelopment())builder.Configuration.AddJsonFile("appsettings.Postgres.local.json",optional:true,reloadOnChange:false);
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages(options=>
 {
@@ -13,19 +14,20 @@ builder.Services.AddRazorPages(options=>
         "ConfirmEmailChange","ResendEmailConfirmation","ExternalLogin","LoginWith2fa","LoginWithRecoveryCode"})
         options.Conventions.AllowAnonymousToAreaPage("Identity","/Account/"+pagina);
 });
-var connectionString=builder.Configuration.GetConnectionString("DefaultConnection");
+var migrateDatabase=args.Contains("--migrar-db");
+var connectionString=builder.Configuration.GetConnectionString(migrateDatabase?"MigrationConnection":"DefaultConnection");
 if(string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("Falta ConnectionStrings:DefaultConnection. Configúrala en User Secrets o en el entorno privado.");
 if(appEnvironmentProduction(builder.Environment))
 {
-    var sql=new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString);
-    if(sql.TrustServerCertificate || sql.Encrypt==Microsoft.Data.SqlClient.SqlConnectionEncryptOption.Optional)
-        throw new InvalidOperationException("SQL productivo exige Encrypt=True/Strict y TrustServerCertificate=False.");
+    var sql=new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+    if(sql.Host is not ("localhost" or "127.0.0.1" or "::1") && !(sql.Host?.StartsWith('/')??false) && sql.SslMode is not Npgsql.SslMode.VerifyFull)
+        throw new InvalidOperationException("PostgreSQL productivo exige SSL Mode=VerifyFull.");
     var keys=builder.Configuration["DataProtection:KeysPath"];
     if(string.IsNullOrWhiteSpace(keys))throw new InvalidOperationException("Falta el volumen persistente DataProtection:KeysPath.");
     builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keys)).SetApplicationName("Denis.Logistica");
 }
-builder.Services.AddDbContext<AppDbContext>(options=>options.UseSqlServer(connectionString,sql=>sql.EnableRetryOnFailure(3)));
+builder.Services.AddDbContext<AppDbContext>(options=>options.UseNpgsql(connectionString,sql=>sql.EnableRetryOnFailure(3)));
 static bool appEnvironmentProduction(IHostEnvironment env)=>!env.IsDevelopment()&&!env.IsEnvironment("Testing");
 builder.Services.AddDefaultIdentity<IdentityUser>(options=>
 {
@@ -41,10 +43,16 @@ builder.Services.AddAntiforgery(o=>{o.Cookie.Path=builder.Configuration["Hosting
 builder.Services.ConfigureApplicationCookie(o=>{o.Cookie.Name=".Denis.Logistica.Sesion";o.Cookie.Path=builder.Configuration["Hosting:PathBase"] is {Length:>0} prefix?prefix:"/";o.Cookie.Domain=null;o.Cookie.HttpOnly=true;o.Cookie.SameSite=SameSiteMode.Lax;o.Cookie.SecurePolicy=builder.Environment.IsDevelopment()||builder.Environment.IsEnvironment("Testing")?CookieSecurePolicy.SameAsRequest:CookieSecurePolicy.Always;});
 builder.Services.Configure<SecurityStampValidatorOptions>(o=>o.ValidationInterval=TimeSpan.Zero);
 var app=builder.Build();
+if(migrateDatabase)
+{
+    using var scope=app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    Console.WriteLine("PostgreSQL migrations applied. / Migraciones PostgreSQL aplicadas.");return;
+}
 if(args.Contains("--comprobar-db"))
 {
     using var scope=app.Services.CreateScope();
-    try {Environment.ExitCode=await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.CanConnectAsync()?0:1;}
+    try {var db=scope.ServiceProvider.GetRequiredService<AppDbContext>();Environment.ExitCode=await db.Database.CanConnectAsync() && !(await db.Database.GetPendingMigrationsAsync()).Any()?0:1;}
     catch {Environment.ExitCode=1;}
     Console.WriteLine(Environment.ExitCode==0?"Database reachable":"Database unavailable");return;
 }

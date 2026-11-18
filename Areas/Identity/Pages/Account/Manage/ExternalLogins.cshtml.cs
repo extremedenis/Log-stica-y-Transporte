@@ -1,4 +1,5 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+using Logistica_y_transporte.Localizacion;
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
@@ -89,12 +90,12 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account.Manage
             var result = await _userManager.RemoveLoginAsync(user, loginProvider, providerKey);
             if (!result.Succeeded)
             {
-                StatusMessage = "The external login was not removed.";
+                StatusMessage = Interfaz.T("No se pudo quitar el acceso externo.","The external login was not removed.");
                 return RedirectToPage();
             }
 
             await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "The external login was removed.";
+            StatusMessage = Interfaz.T("Se quitó el acceso externo.","The external login was removed.");
             return RedirectToPage();
         }
 
@@ -127,14 +128,14 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account.Manage
             var result = await _userManager.AddLoginAsync(user, info);
             if (!result.Succeeded)
             {
-                StatusMessage = "The external login was not added. External logins can only be associated with one account.";
+                StatusMessage = Interfaz.T("No se agregó el acceso externo. Solo puede estar asociado a una cuenta.","The external login was not added. External logins can only be associated with one account.");
                 return RedirectToPage();
             }
 
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-            StatusMessage = "The external login was added.";
+            StatusMessage = Interfaz.T("Se agregó el acceso externo.","The external login was added.");
             return RedirectToPage();
         }
     }

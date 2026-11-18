@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -21,7 +22,7 @@ using Microsoft.Extensions.Configuration;
 
 internal sealed class AuditoriaRunner
 {
-    public static async Task Main()
+    public static async Task Main(string[] args)
     {
         // No usa la conexión privada ni abre SQL Server. El proveedor real se sustituye antes de crear el host.
         var anterior=Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
@@ -29,6 +30,19 @@ internal sealed class AuditoriaRunner
         try
         {
             await using var factory=new HostAuditoria();
+            if(args.Contains("--exportar-ui"))
+            {
+                var output=Environment.GetEnvironmentVariable("DENIS_UI_EVIDENCE_DIR")??throw new InvalidOperationException("Evidence directory required");
+                Directory.CreateDirectory(output);using var fixtureClient=factory.Cliente();
+                foreach(var language in new[]{"es","en"})foreach(var page in new[]{"blog","login"})
+                {
+                    var route=page=="blog"?"/Home/Blog":"/Identity/Account/Login";
+                    var response=await fixtureClient.GetAsync(route+"?culture="+(language=="en"?"en-US":"es-GT")+"&ui-culture="+language);
+                    if(!response.IsSuccessStatusCode)throw new Exception("UI export failed");
+                    await File.WriteAllTextAsync(Path.Combine(output,page+"-"+language+".html"),await response.Content.ReadAsStringAsync());
+                }
+                Console.WriteLine("OK: 4 anonymous UI fixture pages exported; no SQL Server connection.");return;
+            }
             using var anon=factory.Cliente();var services=factory.Services;var checks=0;
             void Check(bool ok,string message){if(!ok)throw new Exception("FALLA: "+message);checks++;}
             bool Denegado(HttpResponseMessage r)=>r.StatusCode==HttpStatusCode.Forbidden ||
@@ -54,7 +68,7 @@ internal sealed class AuditoriaRunner
             {
                 var r=await anon.GetAsync(route);Check(r.StatusCode==HttpStatusCode.Redirect&&r.Headers.Location!.ToString().Contains("Login"),"anónimo bloqueado "+route);
             }
-            Check((await anon.GetAsync("/Identity/Account/Login")).StatusCode==HttpStatusCode.OK,"login público disponible");
+            var loginProbe=await anon.GetAsync("/Identity/Account/Login");Check(loginProbe.StatusCode==HttpStatusCode.OK,"login público disponible");
             Check((await anon.GetAsync("/Identity/Account/Register")).StatusCode==HttpStatusCode.OK,"registro público disponible sin permisos");
             using var sin=factory.Cliente();await sin.GetAsync("/__audit/signin/sin-permiso");
             foreach(var route in new[]{"/Personas","/Personas/Create","/Personas/Edit/"+a,"/Personas/Delete/"+a})Check(Denegado(await sin.GetAsync(route)),"cuenta sin permiso denegada");
@@ -166,6 +180,33 @@ internal sealed class AuditoriaRunner
                 Check((await client.GetAsync("/Identity/Account/Login")).StatusCode==HttpStatusCode.NotFound,"raíz ajena al prefijo no existe");
                 var challenge=await client.GetAsync(prefix+"/Personas");Check(challenge.Headers.Location!.AbsolutePath==prefix+"/Identity/Account/Login","challenge Identity conserva prefijo");
             }
+            foreach(var prefix in new[]{"", "/deniscorp/logistica-transporte", "/otra/logistica"})
+            {
+                await using var localized=new HostAuditoria(prefix);using var client=localized.Cliente();
+                foreach(var language in new[]{"es","en"})
+                {
+                    var r=await client.GetAsync(prefix+"/Home/Blog?culture="+(language=="en"?"en-US":"es-GT")+"&ui-culture="+language);
+                    var html=WebUtility.HtmlDecode(await r.Content.ReadAsStringAsync());
+                    Check(r.StatusCode==HttpStatusCode.OK,"blog público sin consultar datos");
+                    Check(html.Contains("lang=\""+language+"\""),"idioma de documento");
+                    Check(html.Contains(language=="en"?"How to use Logistics":"Cómo usar Logística"),"blog bilingüe");
+                    Check(html.Contains(prefix+"/Home/Idioma")&&html.Contains("__RequestVerificationToken"),"selector CSRF con prefijo");
+                    Check(html.Contains(prefix+"/Personas")&&html.Contains(prefix+"/js/preferences.js"),"enlaces y recursos locales");
+                    Check(!html.Contains("SLA: 99.9%")&&!html.Contains("cdn.jsdelivr"),"sin indicadores ficticios ni CDN");
+                    Check((await client.PostAsync(prefix+"/Home/Idioma",new FormUrlEncodedContent(new Dictionary<string,string>{{"idioma","en"},{"volver","https://example.test"}}))).StatusCode==HttpStatusCode.BadRequest,"cambio idioma requiere CSRF");
+                }
+                var choiceHtml=await (await client.GetAsync(prefix+"/Home/Blog")).Content.ReadAsStringAsync();
+                var choiceToken=WebUtility.HtmlDecode(Regex.Match(choiceHtml,"name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
+                var choice=await client.PostAsync(prefix+"/Home/Idioma",new FormUrlEncodedContent(new Dictionary<string,string>{{"__RequestVerificationToken",choiceToken},{"idioma","en"},{"volver",prefix+"/Home/Blog"}}));
+                Check(choice.StatusCode==HttpStatusCode.Redirect&&choice.Headers.Location!.ToString()==prefix+"/Home/Blog","preferencia de idioma conserva retorno local");
+                Check(choice.Headers.GetValues("Set-Cookie").Any(x=>x.Contains(".AspNetCore.Culture=")&&x.Contains("path="+(prefix.Length>0?prefix:"/"),StringComparison.OrdinalIgnoreCase)&&x.Contains("httponly",StringComparison.OrdinalIgnoreCase)),"cookie de idioma privada y limitada al prefijo");
+                var remembered=await (await client.GetAsync(prefix+"/Home/Blog")).Content.ReadAsStringAsync();
+                Check(remembered.Contains("lang=\"en\"")&&remembered.Contains("How to use Logistics"),"idioma persiste al navegar");
+                var loginHtml=await (await client.GetAsync(prefix+"/Identity/Account/Login")).Content.ReadAsStringAsync();
+                Check(loginHtml.Contains("lang=\"en\"")&&loginHtml.Contains("action=\""+prefix+"/Home/Idioma\""),"selector correcto dentro del área Identity");
+                var unsafeReturn=await client.PostAsync(prefix+"/Home/Idioma",new FormUrlEncodedContent(new Dictionary<string,string>{{"__RequestVerificationToken",choiceToken},{"idioma","es"},{"volver","https://example.test"}}));
+                Check(unsafeReturn.StatusCode==HttpStatusCode.Redirect&&!unsafeReturn.Headers.Location!.IsAbsoluteUri,"rechaza retorno a sitio externo");
+            }
             Console.WriteLine($"OK: {checks} comprobaciones HTTP de autorización, alcance, sobreescritura, CSRF y permisos. SQL Server no fue abierto.");
         }
         finally { Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection",anterior); }
@@ -185,6 +226,7 @@ internal sealed class HostAuditoria : WebApplicationFactory<Program>
         builder.ConfigureLogging(logging=>logging.ClearProviders());
         builder.ConfigureServices(services=>
         {
+            services.AddDataProtection().UseEphemeralDataProtectionProvider();
             services.RemoveAll<DbContextOptions<AppDbContext>>();services.RemoveAll<AppDbContext>();
             services.RemoveAll<IDbContextOptionsConfiguration<AppDbContext>>();
             services.AddDbContext<AppDbContext>(o=>o.UseSqlite(connection));

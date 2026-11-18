@@ -1,4 +1,5 @@
-﻿@page
+@page
+@using static Logistica_y_transporte.Localizacion.Interfaz
 @model LockoutModel
 @{
     ViewData["Title"] = "Locked out";
@@ -6,5 +7,5 @@
 
 <header>
     <h1 class="text-danger">@ViewData["Title"]</h1>
-    <p class="text-danger">This account has been locked out, please try again later.</p>
+    <p class="text-danger">@T("Esta cuenta está bloqueada temporalmente. Inténtalo más tarde.","This account has been locked out, please try again later.")</p>
 </header>

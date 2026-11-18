@@ -1,4 +1,5 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+using Logistica_y_transporte.Localizacion;
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
@@ -82,7 +83,7 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account.Manage
             }
 
             await _signInManager.ForgetTwoFactorClientAsync();
-            StatusMessage = "The current browser has been forgotten. When you login again from this browser you will be prompted for your 2fa code.";
+            StatusMessage = Interfaz.T("Este navegador dejó de estar recordado. En el próximo acceso se solicitará el segundo factor.","The current browser has been forgotten. When you login again from this browser you will be prompted for your 2fa code.");
             return RedirectToPage();
         }
     }

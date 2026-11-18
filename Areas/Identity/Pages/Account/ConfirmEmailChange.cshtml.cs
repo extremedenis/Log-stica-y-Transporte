@@ -1,4 +1,5 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+using Logistica_y_transporte.Localizacion;
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
@@ -48,7 +49,7 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
             var result = await _userManager.ChangeEmailAsync(user, email, code);
             if (!result.Succeeded)
             {
-                StatusMessage = "Error changing email.";
+                StatusMessage = Interfaz.T("No se pudo cambiar el correo.","Error changing email.");
                 return Page();
             }
 
@@ -57,12 +58,12 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
             var setUserNameResult = await _userManager.SetUserNameAsync(user, email);
             if (!setUserNameResult.Succeeded)
             {
-                StatusMessage = "Error changing user name.";
+                StatusMessage = Interfaz.T("No se pudo cambiar el usuario.","Error changing user name.");
                 return Page();
             }
 
             await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "Thank you for confirming your email change.";
+            StatusMessage = Interfaz.T("El cambio de correo fue confirmado.","Thank you for confirming your email change.");
             return Page();
         }
     }

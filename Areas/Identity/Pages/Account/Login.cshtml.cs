@@ -1,3 +1,4 @@
+using Logistica_y_transporte.Localizacion;
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
@@ -64,15 +65,15 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
             ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
-            [Required]
-            [EmailAddress]
+            [Required(ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Required))]
+            [EmailAddress(ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Email))]
             public string Email { get; set; }
 
             /// <summary>
             ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
-            [Required]
+            [Required(ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Required))]
             [DataType(DataType.Password)]
             public string Password { get; set; }
 
@@ -123,13 +124,13 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
                 {
                     _logger.LogWarning("User account locked out.");
                     // Respuesta genérica: no revela si la cuenta existe o está bloqueada.
-                    ModelState.AddModelError(string.Empty,"Invalid login attempt. Try again later.");
+                    ModelState.AddModelError(string.Empty,Interfaz.T("Acceso no válido. Inténtalo más tarde.","Invalid login attempt. Try again later."));
                     return Page();
                 }
                 else
                 {
                     _logger.LogWarning(new EventId(7102,"AccesoRechazado"),"Intento de acceso rechazado; datos de cuenta y contraseña omitidos.");
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt. Try again later.");
+                    ModelState.AddModelError(string.Empty, Interfaz.T("Acceso no válido. Inténtalo más tarde.","Invalid login attempt. Try again later."));
                     return Page();
                 }
             }

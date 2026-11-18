@@ -1,4 +1,5 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+using Logistica_y_transporte.Localizacion;
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
@@ -62,7 +63,7 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account.Manage
             }
 
             _logger.LogInformation("User with ID '{UserId}' has disabled 2fa.", _userManager.GetUserId(User));
-            StatusMessage = "2fa has been disabled. You can reenable 2fa when you setup an authenticator app";
+            StatusMessage = Interfaz.T("El segundo factor se desactivó. Puedes habilitarlo al configurar una aplicación autenticadora.","2fa has been disabled. You can reenable 2fa when you setup an authenticator app");
             return RedirectToPage("./TwoFactorAuthentication");
         }
     }

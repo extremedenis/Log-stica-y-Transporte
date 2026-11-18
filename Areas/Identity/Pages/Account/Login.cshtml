@@ -1,93 +1,11 @@
-﻿@page
+@page
 @model LoginModel
-@{
-    Layout = null;
-    ViewData["Title"] = "Iniciar sesión";
-}
-
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@ViewData["Title"]</title>
-
-    <!-- CSS del template -->
-    <link rel="stylesheet" href="~/vendors/css/vendor.bundle.base.css">
-    <link rel="stylesheet" href="~/css/style.css">
-</head>
-
-<body>
-    <div class="container-scroller">
-        <div class="container-fluid page-body-wrapper full-page-wrapper">
-
-            <div class="content-wrapper d-flex align-items-center auth px-0">
-                <div class="row w-100 mx-0">
-
-                    <!-- FORMULARIO -->
-                    <div class="col-lg-4 mx-auto">
-                        <div class="auth-form-light text-left py-5 px-4 px-sm-5 shadow rounded">
-
-                            <h4 class="text-center">Bienvenido</h4>
-                            <h6 class="fw-light text-center mb-4">Inicia sesión para continuar</h6>
-
-                            <form method="post">
-
-                                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-                                <!-- EMAIL -->
-                                <div class="form-group">
-                                    <input asp-for="Input.Email" class="form-control form-control-lg"
-                                           placeholder="Correo electrónico">
-                                    <span asp-validation-for="Input.Email" class="text-danger"></span>
-                                </div>
-
-                                <!-- PASSWORD -->
-                                <div class="form-group">
-                                    <input asp-for="Input.Password" type="password"
-                                           class="form-control form-control-lg"
-                                           placeholder="Contraseña">
-                                    <span asp-validation-for="Input.Password" class="text-danger"></span>
-                                </div>
-
-                                <!-- REMEMBER -->
-                                <div class="form-check">
-                                    <input asp-for="Input.RememberMe" class="form-check-input">
-                                    <label class="form-check-label">
-                                        Recordarme
-                                    </label>
-                                </div>
-
-                                <!-- BOTÓN -->
-                                <div class="mt-3">
-                                    <button type="submit"
-                                            class="btn btn-primary btn-lg w-100">
-                                        Iniciar sesión
-                                    </button>
-                                </div>
-
-                                <!-- LINKS -->
-                                <div class="text-center mt-3">
-                                    <a asp-page="./ForgotPassword">¿Olvidaste tu contraseña?</a>
-                                </div>
-
-                                <div class="text-center mt-2">
-                                    <a asp-page="./Register">Crear cuenta</a>
-                                </div>
-
-                            </form>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- JS -->
-    <script src="~/vendors/js/vendor.bundle.base.js"></script>
-
-    <partial name="_ValidationScriptsPartial" />
-</body>
-</html>
+@using static Logistica_y_transporte.Localizacion.Interfaz
+@{ViewData["Title"]=T("Iniciar sesión","Sign in");}
+<section class="corp-card"><h1>@ViewData["Title"]</h1><p>@T("Accede con tu cuenta autorizada.","Use your authorized account.")</p>
+<form method="post" asp-route-returnUrl="@Model.ReturnUrl"><div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+<div class="mb-3"><label asp-for="Input.Email">@T("Correo electrónico","Email")</label><input asp-for="Input.Email" class="form-control" autocomplete="username" required/><span asp-validation-for="Input.Email" class="text-danger"></span></div>
+<div class="mb-3"><label asp-for="Input.Password">@T("Contraseña","Password")</label><input asp-for="Input.Password" class="form-control" autocomplete="current-password" required/><span asp-validation-for="Input.Password" class="text-danger"></span></div>
+<label><input asp-for="Input.RememberMe"/> @T("Recordarme","Remember me")</label><p><button type="submit">@T("Iniciar sesión","Sign in")</button></p>
+<a asp-page="./ForgotPassword">@T("¿Olvidaste tu contraseña?","Forgot your password?")</a> · <a asp-page="./Register">@T("Crear cuenta","Create account")</a></form></section>
+@section Scripts{<partial name="_ValidationScriptsPartial"/>}

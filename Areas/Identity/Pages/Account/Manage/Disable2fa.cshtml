@@ -1,7 +1,8 @@
-﻿@page
+@page
+@using static Logistica_y_transporte.Localizacion.Interfaz
 @model Disable2faModel
 @{
-    ViewData["Title"] = "Disable two-factor authentication (2FA)";
+    ViewData["Title"]=T("Desactivar segundo factor","Disable two-factor authentication (2FA)");
     ViewData["ActivePage"] = ManageNavPages.TwoFactorAuthentication;
 }
 
@@ -10,16 +11,14 @@
 
 <div class="alert alert-warning" role="alert">
     <p>
-        <strong>This action only disables 2FA.</strong>
+        <strong>@T("Esta acción solo desactiva el segundo factor.","This action only disables 2FA.")</strong>
     </p>
-    <p>
-        Disabling 2FA does not change the keys used in authenticator apps. If you wish to change the key
-        used in an authenticator app you should <a asp-page="./ResetAuthenticator">reset your authenticator keys.</a>
+    <p>@T("Desactivar el segundo factor no cambia las claves del autenticador. Para cambiarlas debes","Disabling 2FA does not change the keys used in authenticator apps. If you wish to change the key used in an authenticator app you should")<a asp-page="./ResetAuthenticator">@T("restablecer las claves de tu autenticador.","reset your authenticator keys.")</a>
     </p>
 </div>
 
 <div>
     <form method="post">
-        <button class="btn btn-danger" type="submit">Disable 2FA</button>
+        <button class="btn btn-danger" type="submit">@T("Desactivar segundo factor","Disable 2FA")</button>
     </form>
 </div>

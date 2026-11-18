@@ -1,4 +1,5 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+using Logistica_y_transporte.Localizacion;
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
@@ -59,8 +60,8 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
             ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
-            [Required]
-            [StringLength(7, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+            [Required(ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Required))]
+            [StringLength(7, ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Length), MinimumLength = 6)]
             [DataType(DataType.Text)]
             [Display(Name = "Authenticator code")]
             public string TwoFactorCode { get; set; }
@@ -123,7 +124,7 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
             else
             {
                 _logger.LogWarning("Invalid authenticator code entered for user with ID '{UserId}'.", user.Id);
-                ModelState.AddModelError(string.Empty, "Invalid authenticator code.");
+                ModelState.AddModelError(string.Empty, Interfaz.T("Código de autenticación incorrecto.","Invalid authenticator code."));
                 return Page();
             }
         }

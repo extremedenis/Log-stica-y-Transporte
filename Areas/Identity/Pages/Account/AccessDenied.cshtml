@@ -1,10 +1,11 @@
-﻿@page
+@page
+@using static Logistica_y_transporte.Localizacion.Interfaz
 @model AccessDeniedModel
 @{
-    ViewData["Title"] = "Access denied";
+    ViewData["Title"] = T("Acceso restringido","Access denied");
 }
 
 <header>
     <h1 class="text-danger">@ViewData["Title"]</h1>
-    <p class="text-danger">You do not have access to this resource.</p>
+    <p class="text-danger">@T("Tu cuenta no tiene permiso para consultar este recurso.","You do not have access to this resource.")</p>
 </header>

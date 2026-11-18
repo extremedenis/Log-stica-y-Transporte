@@ -1,23 +1,5 @@
-﻿@page
+@page
 @model RegisterConfirmationModel
-@{
-    ViewData["Title"] = "Register confirmation";
-}
-
-<h1>@ViewData["Title"]</h1>
-@{
-    if (@Model.DisplayConfirmAccountLink)
-    {
-<p>
-    This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
-    Normally this would be emailed: <a id="confirm-link" href="@Model.EmailConfirmationUrl">Click here to confirm your account</a>
-</p>
-    }
-    else
-    {
-<p>
-        Please check your email to confirm your account.
-</p>
-    }
-}
-
+@using static Logistica_y_transporte.Localizacion.Interfaz
+@{ViewData["Title"]=T("Confirmación de cuenta","Account confirmation");}
+<h1>@ViewData["Title"]</h1><p>@T("Si el servicio de correo está configurado, recibirás un enlace de confirmación. Si no lo recibes, consulta al responsable.","If email delivery is configured, you will receive a confirmation link. If it does not arrive, contact the service operator.")</p>

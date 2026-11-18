@@ -74,6 +74,8 @@ app.Use(async(c,next)=>
     {c.Response.StatusCode=503;await c.Response.WriteAsync("Alta y recuperación por correo pendientes de configuración. / Email enrollment and recovery are not configured.");return;}
     await next();
 });
+app.UseRequestLocalization(new Microsoft.AspNetCore.Builder.RequestLocalizationOptions()
+ .SetDefaultCulture("es-GT").AddSupportedCultures("es-GT","en-US").AddSupportedUICultures("es","en"));
 app.UseHttpsRedirection();app.UseStaticFiles();app.UseRouting();app.UseRateLimiter();
 app.UseAuthentication();app.UseAuthorization();
 app.MapControllerRoute("areas","{area:exists}/{controller=Home}/{action=Index}/{id?}");

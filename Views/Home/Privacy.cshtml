@@ -1,6 +1,3 @@
-﻿@{
-    ViewData["Title"] = "Privacy Policy";
-}
-<h1>@ViewData["Title"]</h1>
-
-<p>Use this page to detail your site's privacy policy.</p>
+@using static Logistica_y_transporte.Localizacion.Interfaz
+@{ViewData["Title"]=T("Privacidad","Privacy");}
+<h1>@ViewData["Title"]</h1><article class="corp-card"><p>@T("El directorio contiene datos personales. Úsalos únicamente para la finalidad autorizada y evita compartirlos con personas ajenas a la operación.","The directory contains personal data. Use it only for the authorized purpose and avoid sharing it with anyone outside the operation.")</p><p>@T("La entidad operadora debe publicar sus datos de contacto, finalidad, plazos de conservación y procedimiento para ejercer derechos antes del despliegue. Esta explicación técnica no sustituye esa política institucional.","Before deployment, the operator must publish its contact information, purposes, retention periods and procedure for exercising data rights. This technical explanation does not replace that institutional policy.")</p></article>

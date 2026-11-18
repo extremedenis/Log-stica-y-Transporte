@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -24,8 +26,16 @@ try{
  connection.Database=database;
  var options=new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection.ConnectionString).Options;
  await using(var db=new AppDbContext(options)){
+  await db.GetService<IMigrator>().MigrateAsync("20261118182214_PostgreSqlInicial");
+  await db.Database.ExecuteSqlRawAsync("INSERT INTO \"AspNetUsers\"(\"Id\",\"AccessFailedCount\",\"EmailConfirmed\",\"LockoutEnabled\",\"PhoneNumberConfirmed\",\"TwoFactorEnabled\") VALUES('migration-guard',0,false,false,false,false); INSERT INTO \"AspNetUserTokens\"(\"UserId\",\"LoginProvider\",\"Name\",\"Value\") VALUES('migration-guard','fixture',repeat('x',129),'preserve-me')");
+  try{await db.Database.MigrateAsync();throw new Exception("Long key silently truncated");}catch(PostgresException error){Check(error.SqlState=="P0001");}
+  await using(var probe=new NpgsqlConnection(connection.ConnectionString)){
+   await probe.OpenAsync();await using var value=new NpgsqlCommand("SELECT length(\"Name\") FROM \"AspNetUserTokens\" WHERE \"UserId\"='migration-guard'",probe);Check((int)(await value.ExecuteScalarAsync())! ==129);
+  }
+  Check((await db.Database.GetAppliedMigrationsAsync()).Count()==1);
+  await db.Database.ExecuteSqlRawAsync("DELETE FROM \"AspNetUserTokens\" WHERE \"UserId\"='migration-guard'; DELETE FROM \"AspNetUsers\" WHERE \"Id\"='migration-guard'");
   await db.Database.MigrateAsync();Check(!(await db.Database.GetPendingMigrationsAsync()).Any());Check(!db.Database.HasPendingModelChanges());
-  await db.Database.MigrateAsync();Check((await db.Database.GetAppliedMigrationsAsync()).Count()==1);
+  await db.Database.MigrateAsync();Check((await db.Database.GetAppliedMigrationsAsync()).Count()==2);
  }
  var services=new ServiceCollection();services.AddLogging();services.AddDataProtection().UseEphemeralDataProtectionProvider();
  services.AddDbContext<AppDbContext>(o=>o.UseNpgsql(connection.ConnectionString));

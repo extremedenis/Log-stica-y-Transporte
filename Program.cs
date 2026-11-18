@@ -31,6 +31,7 @@ builder.Services.AddDbContext<AppDbContext>(options=>options.UseNpgsql(connectio
 static bool appEnvironmentProduction(IHostEnvironment env)=>!env.IsDevelopment()&&!env.IsEnvironment("Testing");
 builder.Services.AddDefaultIdentity<IdentityUser>(options=>
 {
+    options.Stores.MaxLengthForKeys=128;
     options.SignIn.RequireConfirmedAccount=!builder.Environment.IsDevelopment() && !builder.Environment.IsEnvironment("Testing");
     options.Lockout.AllowedForNewUsers=true;
     options.Lockout.MaxFailedAccessAttempts=5;

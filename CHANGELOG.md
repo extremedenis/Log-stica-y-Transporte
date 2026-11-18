@@ -1,5 +1,12 @@
 # Historial de Logística
 
+## 0.4.1 — 18/11/2026
+
+- Claves Identity de 128 caracteres coherentes entre diseño, UI y mantenimiento; corrige PendingModelChanges al migrar en producción.
+- Migración adicional con guard que rechaza claves demasiado largas sin truncarlas ni borrar datos.
+- Verificación de publicación productiva con PostgreSQL y prefijo /deniscorp/logistica-transporte/.
+
+
 ## 0.4.0 — 18/11/2026
 
 - PostgreSQL/Npgsql sustituye SQL Server; migraciones y snapshot propios, historial SQL Server conservado sin compilar.

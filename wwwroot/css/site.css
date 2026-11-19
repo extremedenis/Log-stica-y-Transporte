@@ -6,3 +6,7 @@ button,.btn,input[type=submit]{min-height:44px;border:1px solid var(--line);bord
 @media(max-width:600px){.corp-header{gap:16px;padding:20px}.corp-header nav{order:3;width:100%;gap:18px}.corp-card{padding:22px}main{padding:28px 12px}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .corp-controls .navbar-nav{display:flex;flex-direction:row;gap:12px;align-items:center}.corp-controls .nav-link{color:var(--ink)!important}.corp-controls .nav-link:hover{color:var(--accent)!important}.corp-controls #logout{color:var(--on-button)!important}
+
+.corporate-home{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:44px;max-width:100%;padding:8px 12px;border-radius:12px;color:inherit;text-decoration:underline;text-underline-offset:4px;overflow-wrap:anywhere}.corporate-home:focus-visible{outline:3px solid currentColor;outline-offset:3px}.dash-footer{flex-wrap:wrap;gap:12px}.corporate-home:hover{color:inherit;text-decoration-thickness:2px}
+
+footer a.corporate-home[data-corporate-home]{font-size:14px;line-height:1.4}

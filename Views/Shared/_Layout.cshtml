@@ -1,3 +1,5 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration CorporateConfiguration
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment CorporateEnvironment
 @using static Logistica_y_transporte.Localizacion.Interfaz
 <!DOCTYPE html><html lang="@Codigo"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>@ViewData["Title"] · Denis Corp Logística</title>
@@ -10,6 +12,6 @@
 <nav aria-label="@T("Navegación principal","Main navigation")"><a asp-area="" asp-controller="Home" asp-action="Index">@T("Inicio","Home")</a><a asp-area="" asp-controller="Home" asp-action="Blog">@T("Blog y guías","Blog and guides")</a><a asp-area="" asp-controller="Home" asp-action="Privacy">@T("Privacidad","Privacy")</a></nav>
 <div class="corp-controls"><partial name="_LoginPartial"/><form asp-area="" asp-controller="Home" asp-action="Idioma" method="post"><input type="hidden" name="volver" value="@(Context.Request.PathBase+Context.Request.Path+Context.Request.QueryString)"/><button type="submit" name="idioma" value="@(English?"es":"en")" aria-label="@T("Cambiar a inglés","Switch to Spanish")">@(English?"ES":"EN")</button></form><button type="button" id="theme-toggle" aria-label="@T("Cambiar modo día o noche","Switch light or dark mode")"><span aria-hidden="true">☼ / ☾</span></button></div></header>
 <div class="container"><main id="main" class="pb-3">@RenderBody()</main></div>
-<footer class="corp-footer"><p>© @DateTime.UtcNow.Year Denis Corp. · @T("Logística y transporte","Logistics and transport") · v0.4.0</p><a asp-area="" asp-controller="Home" asp-action="Privacy">@T("Privacidad","Privacy")</a></footer>
+<footer class="corp-footer"><a class="corporate-home" data-corporate-home href="@Logistica_y_transporte.Seguridad.EnlacesCorporativos.Inicio(CorporateConfiguration,CorporateEnvironment)" aria-label="@T("Volver al inicio de Denis Corp","Return to Denis Corp home")">by Denis Corp ↗</a><p>© @DateTime.UtcNow.Year Denis Corp. · @T("Logística y transporte","Logistics and transport") · v@(typeof(Logistica_y_transporte.Models.AppDbContext).Assembly.GetName().Version?.ToString(3))</p><a asp-area="" asp-controller="Home" asp-action="Privacy">@T("Privacidad","Privacy")</a></footer>
 <script src="~/lib/jquery/dist/jquery.min.js"></script><script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script><script type="module" src="~/js/scroll-guide.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts",required:false)</body></html>

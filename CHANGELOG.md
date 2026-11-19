@@ -1,5 +1,12 @@
 # Historial de Logística
 
+## 0.4.2 — 19/11/2026
+
+- Inicio público del producto sin exponer registros; Personas conserva permisos y 2FA.
+- by Denis Corp regresa al portal corporativo local y pie de página adaptable.
+- Versión del pie obtenida del ensamblado para evitar etiquetas antiguas.
+
+
 ## 0.4.1 — 18/11/2026
 
 - Claves Identity de 128 caracteres coherentes entre diseño, UI y mantenimiento; corrige PendingModelChanges al migrar en producción.

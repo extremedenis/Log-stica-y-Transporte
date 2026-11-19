@@ -47,6 +47,15 @@ internal sealed class AuditoriaRunner
             void Check(bool ok,string message){if(!ok)throw new Exception("FALLA: "+message);checks++;}
             bool Denegado(HttpResponseMessage r)=>r.StatusCode==HttpStatusCode.Forbidden ||
                 (r.StatusCode==HttpStatusCode.Redirect&&r.Headers.Location?.ToString().Contains("AccessDenied")==true);
+            // Exercise the real registration/reset models rather than a copied regex.
+            foreach(var model in new object[]{new Logistica_y_transporte.Areas.Identity.Pages.Account.RegisterModel.InputModel(),new Logistica_y_transporte.Areas.Identity.Pages.Account.ResetPasswordModel.InputModel()})
+            foreach(var sample in new[]{("Abcd123!",true),("Ab1!xyz",false),("Abcdefg!",false),("abcdef1!",false),("ABCDEF1!",false),("Abcdef12",false),("Abcdef1 ",false)})
+            {
+                var context=new System.ComponentModel.DataAnnotations.ValidationContext(model){MemberName="Password"};
+                Check(System.ComponentModel.DataAnnotations.Validator.TryValidateProperty(sample.Item1,context,new List<System.ComponentModel.DataAnnotations.ValidationResult>())==sample.Item2,"reglas de contraseña en registro y recuperación");
+            }
+            var policy=services.GetRequiredService<Microsoft.Extensions.Options.IOptions<IdentityOptions>>().Value.Password;
+            Check(policy.RequiredLength==8&&policy.RequireDigit&&policy.RequireUppercase&&policy.RequireLowercase&&policy.RequireNonAlphanumeric,"política de Identity conserva los cinco requisitos");
             var a=Guid.NewGuid();var b=Guid.NewGuid();
             using(var scope=services.CreateScope())
             {

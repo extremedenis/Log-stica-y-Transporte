@@ -85,7 +85,8 @@ namespace Logistica_y_transporte.Areas.Identity.Pages.Account
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
             [Required(ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Required))]
-            [StringLength(100, ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Length), MinimumLength = 6)]
+            [RegularExpression(@"^(?=.*[0-9])(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9\s]).{8,100}$",ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.PasswordRequirements))]
+            [StringLength(100, ErrorMessageResourceType=typeof(Interfaz),ErrorMessageResourceName=nameof(Interfaz.Length), MinimumLength = 8)]
             [DataType(DataType.Password)]
             [Display(Name = "Password")]
             public string Password { get; set; }

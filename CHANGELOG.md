@@ -1,5 +1,10 @@
 # Historial de Logística
 
+## 0.5.0 — 2026-11-19
+
+- Diseño común de controles y acceso; paleta propia y revisión móvil.
+- Requisitos de contraseña visibles y controles accesibles.
+
 ## 0.4.2 — 19/11/2026
 
 - Inicio público del producto sin exponer registros; Personas conserva permisos y 2FA.

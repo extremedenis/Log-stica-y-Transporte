@@ -2,6 +2,7 @@
 @using static Logistica_y_transporte.Localizacion.Interfaz
 @model RegisterModel
 @{
+ Layout="/Views/Shared/_AuthLayout.cshtml";
     ViewData["Title"] = T("Crear cuenta","Register");
 }
 
@@ -10,7 +11,7 @@
 <div class="row">
     <div class="col-md-4">
         <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post">
-            <h2>@T("Crea una cuenta nueva.","Create a new account.")</h2>
+
             <hr />
             <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
             <div class="form-floating mb-3">
@@ -19,10 +20,11 @@
                 <span asp-validation-for="Input.Email" class="text-danger"></span>
             </div>
             <div class="form-floating mb-3">
-                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
+                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true"  />
                 <label asp-for="Input.Password">@T("Contraseña","Password")</label>
                 <span asp-validation-for="Input.Password" class="text-danger"></span>
             </div>
+            <partial name="_PasswordRequirements" model='"Input_Password"'/>
             <div class="form-floating mb-3">
                 <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
                 <label asp-for="Input.ConfirmPassword">@T("Confirmar contraseña","Confirm Password")</label>
@@ -31,36 +33,9 @@
             <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary">@T("Crear cuenta","Register")</button>
         </form>
     </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>@T("Usar otro servicio para registrarse.","Use another service to register.")</h3>
-            <hr />
-            @{
-                if ((Model.ExternalLogins?.Count ?? 0) == 0)
-                {
-                    <div>
-                        <p>@T("No hay servicios de autenticación externa configurados. Consulta este","There are no external authentication services configured. See this")<a href="https://go.microsoft.com/fwlink/?LinkID=532715">@T("artículo sobre la configuración de accesos externos","article about setting up this ASP.NET application to support logging in via external services")</a>.
-                        </p>
-                    </div>
-                }
-                else
-                {
-                    <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
-                        <div>
-                            <p>
-                                @foreach (var provider in Model.ExternalLogins!)
-                                {
-                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
-                                }
-                            </p>
-                        </div>
-                    </form>
-                }
-            }
-        </section>
-    </div>
 </div>
 
+@if(Model.ExternalLogins?.Count>0){<form asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post">@foreach(var provider in Model.ExternalLogins){<button type="submit" class="btn btn-primary" name="provider" value="@provider.Name">@provider.DisplayName</button>}</form>}
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

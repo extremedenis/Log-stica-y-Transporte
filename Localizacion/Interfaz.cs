@@ -6,6 +6,7 @@ public static class Interfaz
  public static string Codigo=>English?"en":"es";
  public static string T(string es,string en)=>English?en:es;
 
+ public static string PasswordRequirements=>T("Usa al menos 8 caracteres, un número, una mayúscula, una minúscula y un símbolo.","Use at least 8 characters, a number, an uppercase letter, a lowercase letter and a symbol.");
  public static string Required=>T("El campo {0} es obligatorio.","The {0} field is required.");
  public static string Length=>T("El campo {0} debe tener entre {2} y {1} caracteres.","The {0} field must contain between {2} and {1} characters.");
  public static string Mismatch=>T("Las contraseñas no coinciden.","The passwords do not match.");

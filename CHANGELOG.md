@@ -1,5 +1,11 @@
 # Historial de Logística
 
+## 0.6.0 — 2026-11-19
+
+- Siete avisos iniciales, repetición desde ajustes y ayuda por cuenta con fechas y tolerancia de escritura.
+- Controles minimalistas y cierre de sesión en el home de cada hijo.
+- Blog raíz ampliado con piezas clave, incluido POS sin modificar su aplicación.
+
 ## 0.5.0 — 2026-11-19
 
 - Diseño común de controles y acceso; paleta propia y revisión móvil.

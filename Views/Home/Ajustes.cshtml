@@ -1,0 +1,3 @@
+@using static Logistica_y_transporte.Localizacion.Interfaz
+@{ViewData["Title"]=T("Ajustes generales","General settings");}
+<section class="corp-card"><h1>@ViewData["Title"]</h1><p>@T("El idioma y el modo día o noche se cambian desde la cabecera. Tu preferencia se conserva en este navegador.","Change language and light or dark mode in the header. Your preference is kept in this browser.")</p><button class="btn btn-primary" type="button" data-dc-replay-tour>@T("Reproducir los 7 primeros pasos","Replay the 7 first steps")</button><p><a asp-area="Identity" asp-page="/Account/Manage/Index">@T("Mi cuenta y seguridad","My account and security")</a></p></section>

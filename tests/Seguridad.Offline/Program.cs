@@ -81,7 +81,15 @@ internal sealed class AuditoriaRunner
             Check((await anon.GetAsync("/Identity/Account/Register")).StatusCode==HttpStatusCode.OK,"registro público disponible sin permisos");
             using var sin=factory.Cliente();await sin.GetAsync("/__audit/signin/sin-permiso");
             foreach(var route in new[]{"/Personas","/Personas/Create","/Personas/Edit/"+a,"/Personas/Delete/"+a})Check(Denegado(await sin.GetAsync(route)),"cuenta sin permiso denegada");
+            var sinAyuda=await sin.GetStringAsync("/Home/Ajustes");Check(sinAyuda.Contains("dc-experience-data")&&!sinAyuda.Contains("\"id\":\"personas\""),"ayuda sin permiso no ofrece Personas");
             using var owner=factory.Cliente();await owner.GetAsync("/__audit/signin/a");
+            Check(Denegado(await sin.GetAsync("/Home/Cifras")),"cifras denegadas sin permiso");
+            using(var json=System.Text.Json.JsonDocument.Parse(await owner.GetStringAsync("/Home/Cifras")))Check(json.RootElement.GetProperty("count").GetInt32()==1,"conteo respeta propietario");
+            using(var cierre=factory.Cliente()){
+                await cierre.GetAsync("/__audit/signin/a");var salida=await Post(cierre,"/Identity/Account/Logout","/Home/Ajustes",("returnUrl","https://example.invalid/"));Check(salida.StatusCode==HttpStatusCode.Redirect&&salida.Headers.Location!.ToString()=="/","cierre regresa al inicio de Logística e ignora retorno externo");Check((await cierre.GetAsync("/Home/Cifras")).StatusCode==HttpStatusCode.Redirect,"cierre invalida acceso a cifras");
+            }
+            var ayudaOwner=await owner.GetStringAsync("/Home/Ajustes");Check(ayudaOwner.Contains("\"id\":\"personas\""),"ayuda ofrece Personas con autorización real");
+            if(args.Contains("--exportar-experiencia-ui")){var dir=Environment.GetEnvironmentVariable("DENIS_UI_EVIDENCE_DIR")??throw new InvalidOperationException("Evidence directory required");Directory.CreateDirectory(dir);await File.WriteAllTextAsync(Path.Combine(dir,"logistica-owner.html"),ayudaOwner);await File.WriteAllTextAsync(Path.Combine(dir,"logistica-sin.html"),sinAyuda);}
             var index=await owner.GetStringAsync("/Personas");Check(index.Contains("PrivadoA")&&!index.Contains("PrivadoB"),"listado aislado por propietario");
             Check((await owner.GetAsync("/Personas/Details/"+a)).StatusCode==HttpStatusCode.OK,"detalle propio permitido");
             foreach(var action in new[]{"Details","Edit","Delete"})Check((await owner.GetAsync("/Personas/"+action+"/"+b)).StatusCode==HttpStatusCode.NotFound,"ID ajeno oculto "+action);

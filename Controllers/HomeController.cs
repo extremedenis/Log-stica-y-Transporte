@@ -34,6 +34,17 @@ namespace Logistica_y_transporte.Controllers
             return LocalRedirect(Url.IsLocalUrl(volver)&&volver!.StartsWith(Request.PathBase+"/",StringComparison.Ordinal)?volver:Url.Action("Index","Home")!);
         }
 
+        public IActionResult Ajustes()=>View();
+        [Authorize(Policy=Logistica_y_transporte.Seguridad.PermisosPersonas.Leer),HttpGet,ResponseCache(NoStore=true,Location=ResponseCacheLocation.None)]
+        public async Task<IActionResult> Cifras([FromServices] AppDbContext db,[FromServices] Microsoft.AspNetCore.Authorization.IAuthorizationService auth,CancellationToken ct)
+        {
+            var todos=(await auth.AuthorizeAsync(User,Logistica_y_transporte.Seguridad.PermisosPersonas.Todos)).Succeeded;
+            var id=User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if(id is null)return Forbid();
+            var consulta=db.Personas.AsQueryable();if(!todos)consulta=consulta.Where(p=>p.UserId==id);
+            return Json(new{count=await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(consulta,ct),allAuthorized=todos});
+        }
+
         [AllowAnonymous]
         public IActionResult Privacy()
         {

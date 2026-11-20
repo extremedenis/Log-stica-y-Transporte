@@ -103,6 +103,19 @@ internal sealed class AuditoriaRunner
                 Check(!string.IsNullOrEmpty(token),"antiforgery real del formulario");
                 return await client.PostAsync(route,new FormUrlEncodedContent(values.Append(("__RequestVerificationToken",token)).Select(v=>new KeyValuePair<string,string>(v.Item1,v.Item2))));
             }
+            // A real Identity temporary account must pass the server gate before protected work.
+            using(var scope=services.CreateScope()){
+                var users=scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();var u=new IdentityUser{Id="temporal-111",UserName="temporal@example.test",Email="temporal@example.test",EmailConfirmed=true,TwoFactorEnabled=true};
+                Check((await users.CreateAsync(u,"Temporal111!Aa")).Succeeded,"crear cuenta temporal ficticia");
+                Check((await users.AddClaimsAsync(u,new[]{new Claim(AccesosIniciales.Temporal,"1"),new Claim(PermisosPersonas.Tipo,PermisosPersonas.Leer)})).Succeeded,"marcar temporal sin ampliar permisos");
+            }
+            using(var temporary=factory.Cliente()){
+                await temporary.GetAsync("/__audit/signin/temporal-111");var denied=await temporary.GetAsync("/Personas");Check(denied.StatusCode==HttpStatusCode.Redirect&&denied.Headers.Location!.ToString().EndsWith("/Identity/Account/CambiarTemporal"),"contraseña temporal bloquea el módulo desde servidor");
+                var weak=await Post(temporary,"/Identity/Account/CambiarTemporal","/Identity/Account/CambiarTemporal",("Input.Actual","Temporal111!Aa"),("Input.Nueva","weak"),("Input.Confirmacion","weak"));Check(weak.StatusCode==HttpStatusCode.OK,"contraseña débil no completa cambio");
+                var changed=await Post(temporary,"/Identity/Account/CambiarTemporal","/Identity/Account/CambiarTemporal",("Input.Actual","Temporal111!Aa"),("Input.Nueva","Definitiva222!Bb"),("Input.Confirmacion","Definitiva222!Bb"));Check(changed.StatusCode==HttpStatusCode.Redirect&&changed.Headers.Location!.ToString().EndsWith("/Identity/Account/Login"),"cambio válido exige sesión nueva");
+                using var scope=services.CreateScope();var users=scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();var u=(await users.FindByIdAsync("temporal-111"))!;Check(await users.CheckPasswordAsync(u,"Definitiva222!Bb")&&!await users.CheckPasswordAsync(u,"Temporal111!Aa"),"hash Identity reemplazado y clave temporal inválida");Check(!(await users.GetClaimsAsync(u)).Any(c=>c.Type==AccesosIniciales.Temporal),"marca temporal retirada solo después del cambio válido");
+                Check((await temporary.GetAsync("/Home/Ajustes")).StatusCode==HttpStatusCode.Redirect,"sesión antigua cerrada después del cambio");
+            }
             var edit=await Post(owner,"/Personas/Edit/"+a,"/Personas/Edit/"+a,("PersonaId",a.ToString()),("Nombre","EditadoA"),("Apellido","Ficticio"),("UserId","b"),("Inactivo","true"));
             Check(edit.StatusCode==HttpStatusCode.Redirect,"edición propia válida");
             var foreignEdit=await Post(owner,"/Personas/Edit/"+b,"/Personas/Edit/"+a,("PersonaId",b.ToString()),("Nombre","Intruso"),("Apellido","Ficticio"));

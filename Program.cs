@@ -59,6 +59,11 @@ if(args.Contains("--comprobar-db"))
     catch {Environment.ExitCode=1;}
     Console.WriteLine(Environment.ExitCode==0?"Database reachable":"Database unavailable");return;
 }
+if(args.Contains("--preparar-accesos")){
+ if(!app.Environment.IsDevelopment())throw new InvalidOperationException("La preparación inicial requiere entorno local Development.");
+ var index=Array.IndexOf(args,"--archivo-privado");if(index<0||index+1>=args.Length)throw new InvalidOperationException("Indica el archivo privado de accesos.");
+ using var scope=app.Services.CreateScope();Environment.ExitCode=await AccesosIniciales.Preparar(scope.ServiceProvider,args[index+1]);return;
+}
 if(args.Contains("--administrar-personas"))
 {
     using var scope=app.Services.CreateScope();
@@ -88,7 +93,12 @@ app.Use(async(c,next)=>
 app.UseRequestLocalization(new Microsoft.AspNetCore.Builder.RequestLocalizationOptions()
  .SetDefaultCulture("es-GT").AddSupportedCultures("es-GT","en-US").AddSupportedUICultures("es","en"));
 app.UseHttpsRedirection();app.UseStaticFiles();app.UseRouting();app.UseRateLimiter();
-app.UseAuthentication();app.UseAuthorization();
+app.UseAuthentication();
+app.Use(async(c,next)=>{if(c.User.Identity?.IsAuthenticated==true&&c.Request.Path!="/Identity/Account/CambiarTemporal"&&c.Request.Path!="/Home/Idioma"&&!c.Request.Path.StartsWithSegments("/Identity/Account/Logout")){
+ var users=c.RequestServices.GetRequiredService<UserManager<IdentityUser>>();var user=await users.GetUserAsync(c.User);if(user is not null&&(await users.GetClaimsAsync(user)).Any(cl=>cl.Type==AccesosIniciales.Temporal)){
+  c.Response.Redirect(c.Request.PathBase+"/Identity/Account/CambiarTemporal");return;
+ }}await next();});
+app.UseAuthorization();
 app.MapControllerRoute("areas","{area:exists}/{controller=Home}/{action=Index}/{id?}");
 app.MapControllerRoute("default","{controller=Home}/{action=Index}/{id?}");
 app.MapRazorPages();app.Run();

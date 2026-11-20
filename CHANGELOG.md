@@ -1,5 +1,11 @@
 # Historial de Logística
 
+## 1.11.0 — 2026-11-20
+
+- Alineación excepcional solicitada: cada programa seguirá aumentando su versión individualmente. POS excluido.
+- Identidad fija, menú con desplazamiento independiente, versión y asistente centrados al pie; navegación móvil por permisos.
+- Recuperación con regreso, V centrada, ayuda de audio, nuevas portadas y preparación de accesos temporales.
+
 ## 0.6.0 — 2026-11-19
 
 - Siete avisos iniciales, repetición desde ajustes y ayuda por cuenta con fechas y tolerancia de escritura.

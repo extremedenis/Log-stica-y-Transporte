@@ -1,5 +1,9 @@
 # Historial de Logística
 
+## 1.11.1 — 2026-11-21
+
+- Acceso visible a la configuración de 2FA desde iniciar sesión; conserva la política de autenticador de los módulos protegidos.
+
 ## 1.11.0 — 2026-11-20
 
 - Alineación excepcional solicitada: cada programa seguirá aumentando su versión individualmente. POS excluido.
